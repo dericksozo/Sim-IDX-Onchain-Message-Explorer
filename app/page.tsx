@@ -51,14 +51,6 @@ const chains: Record<number, { name: string; slug: string }> = {
   137: { name: "Polygon", slug: "polygon" },
 } as const
 
-// Helper function to format Wei to ETH
-const formatValue = (value: number): string => {
-  if (value === 0) return "0 ETH"
-  const eth = value / 1e18
-  if (eth < 0.001) return `${(value / 1e9).toFixed(2)} Gwei`
-  return `${eth.toFixed(6)} ETH`
-}
-
 // Helper function to handle content display
 const formatContent = (content: string): string => {
   if (content === "|undefined" || !content) return "No message content"
@@ -102,8 +94,6 @@ function Copyable({ text, children }: CopyableProps) {
 // ---------------------------------------------------------------------------
 // Real API helpers -----------------------------------------------------------
 // ---------------------------------------------------------------------------
-
-const API_BASE_URL = "https://book.idx.dune.com"
 
 const fetchLatestMessages = async (limit = 10, offset = 0): Promise<ApiResponse> => {
   const res = await fetch(`/api/idx/latest?limit=${limit}&offset=${offset}`)
@@ -150,7 +140,7 @@ function MessageCard({ message }: { message: Message }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 flex items-center justify-center">
-              <NetworkIcon id={chain.name as any} size={24} variant="branded" />
+              <NetworkIcon id={chain.slug} size={24} variant="branded" />
             </div>
             <Badge variant="secondary" className="text-xs">
               {chain.name}
