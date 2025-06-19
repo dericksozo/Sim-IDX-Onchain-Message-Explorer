@@ -186,7 +186,17 @@ function ChainIcon({ slug, size }: { slug: string; size: number }) {
     return <div style={{ width: size, height: size }} className="rounded-full bg-black" />
   }
 
-  return <NetworkIcon id={slug} size={size} variant="branded" />
+  // Render the icon at 2× resolution for crisper appearance on high-DPI screens,
+  // but constrain its visual footprint with CSS so it doesn't grow larger.
+  const dpiFactor = 2
+  return (
+    <NetworkIcon
+      id={slug}
+      size={size * dpiFactor}
+      variant="branded"
+      style={{ width: size, height: size }}
+    />
+  )
 }
 
 function MessageCard({ message }: { message: Message }) {
@@ -227,12 +237,20 @@ function MessageCard({ message }: { message: Message }) {
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">From:</span>
-            <Copyable text={message.sender}>{formatAddress(message.sender)}</Copyable>
+            <Copyable text={message.sender}>
+              <span className="font-mono truncate inline-block max-w-[10rem] sm:max-w-[12rem] lg:max-w-[14rem]">
+                {message.sender}
+              </span>
+            </Copyable>
           </div>
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">To:</span>
-            <Copyable text={message.receiver}>{formatAddress(message.receiver)}</Copyable>
+            <Copyable text={message.receiver}>
+              <span className="font-mono truncate inline-block max-w-[10rem] sm:max-w-[12rem] lg:max-w-[14rem]">
+                {message.receiver}
+              </span>
+            </Copyable>
           </div>
         </div>
 
@@ -245,7 +263,11 @@ function MessageCard({ message }: { message: Message }) {
           <div className="flex items-center gap-2">
             <ExternalLink className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">Tx:</span>
-            <Copyable text={message.txnHash}>{formatAddress(message.txnHash)}</Copyable>
+            <Copyable text={message.txnHash}>
+              <span className="font-mono truncate inline-block max-w-[12rem] sm:max-w-[14rem] lg:max-w-[16rem]">
+                {message.txnHash}
+              </span>
+            </Copyable>
           </div>
         </div>
 
@@ -527,7 +549,8 @@ export default function SimIDXTeaser() {
         {/* Message Feed */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            {/* Responsive header: stack on mobile, row on md+ */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
                 {searchQuery ? (
                   <Search className="w-5 h-5" />
@@ -537,7 +560,7 @@ export default function SimIDXTeaser() {
                 {searchQuery ? `Search Results for "${searchQuery}"` : "Real-time Message Feed"}
               </CardTitle>
 
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
                 {/* Show New Messages button (only in real-time feed) */}
                 {!searchQuery && hasNewMessages && (
                   <Button onClick={handleRefresh} disabled={loading} size="sm">
@@ -552,7 +575,7 @@ export default function SimIDXTeaser() {
 
                 {/* Chain filter icons (only in real-time feed) */}
                 {!searchQuery && (
-                <div className="flex items-center gap-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1">
+                <div className="flex items-center gap-1 flex-wrap border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full md:w-auto">
                   <span className="text-xs font-semibold mr-1">Filter Chains:</span>
                   {ALL_CHAIN_IDS.map((id) => {
                     const chain = chains[id]
@@ -563,7 +586,7 @@ export default function SimIDXTeaser() {
                         key={id}
                         onClick={() => toggleChain(id)}
                         title={`${selected ? "Hide" : "Show"} ${chain.name}`}
-                        className={`relative p-1 rounded transition-colors ${
+                        className={`relative p-1 rounded transition-colors shrink-0 ${
                           selected ? "opacity-100" : "opacity-30 grayscale"
                         } hover:bg-muted/40`}
                       >
