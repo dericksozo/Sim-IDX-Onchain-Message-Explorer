@@ -91,7 +91,7 @@ function Copyable({ text, children }: CopyableProps) {
     <button
       onClick={handleCopy}
       title={copied ? "Copied!" : text}
-      className="bg-muted px-1 rounded text-xs font-mono hover:bg-muted/80 transition-colors focus:outline-none inline-flex items-center gap-1"
+      className="bg-muted px-1 rounded text-xs font-mono hover:bg-muted/80 transition-colors focus:outline-none inline-flex items-center gap-1 max-w-full min-w-0"
     >
       {children}
       {copied && <Check className="w-3 h-3 text-green-500" />}
@@ -220,7 +220,7 @@ function MessageCard({ message }: { message: Message }) {
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 flex items-center justify-center">
               <ChainIcon slug={chain.slug} size={24} />
-            </div>
+             </div>
             <Badge variant="secondary" className="text-xs">
               {chain.name}
             </Badge>
@@ -237,7 +237,7 @@ function MessageCard({ message }: { message: Message }) {
             <Users className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">From:</span>
             <Copyable text={message.sender}>
-              <span className="font-mono truncate inline-block max-w-[10rem] sm:max-w-[12rem] lg:max-w-[14rem]">
+              <span className="font-mono truncate max-w-full">
                 {message.sender}
               </span>
             </Copyable>
@@ -246,7 +246,7 @@ function MessageCard({ message }: { message: Message }) {
             <Users className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">To:</span>
             <Copyable text={message.receiver}>
-              <span className="font-mono truncate inline-block max-w-[10rem] sm:max-w-[12rem] lg:max-w-[14rem]">
+              <span className="font-mono truncate max-w-full">
                 {message.receiver}
               </span>
             </Copyable>
@@ -263,7 +263,7 @@ function MessageCard({ message }: { message: Message }) {
             <ExternalLink className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">Tx:</span>
             <Copyable text={message.txnHash}>
-              <span className="font-mono truncate inline-block max-w-[12rem] sm:max-w-[14rem] lg:max-w-[16rem]">
+              <span className="font-mono truncate max-w-full">
                 {message.txnHash}
               </span>
             </Copyable>
