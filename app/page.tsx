@@ -279,6 +279,9 @@ function MessageCard({ message }: { message: Message }) {
 
 export default function SimIDXTeaser() {
   const [messages, setMessages] = useState<Message[]>([])
+  // Text currently inside the search box (updates on every keystroke)
+  const [searchInput, setSearchInput] = useState("")
+  // Last executed search query (updates ONLY when user submits)
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -298,7 +301,7 @@ export default function SimIDXTeaser() {
   }
 
   // Updated search suggestions based on real data patterns
-  const searchSuggestions = ["zachXBT", "erc-20", "mint", "facet", "opensea", "gov", "data:", "author"]
+  const searchSuggestions = ["vitalik", "erc-20", "mint", "facet", "opensea", "gov", "data:", "author"]
 
   // Initial load ------------------------------------------------------------
   useEffect(() => {
@@ -472,19 +475,31 @@ export default function SimIDXTeaser() {
             <div className="flex gap-2">
               <Input
                 placeholder="Search messages, addresses, or content..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch(searchInput)
+                  }
+                }}
                 className="flex-1"
               />
-              <Button onClick={() => handleSearch(searchQuery)} disabled={loading}>
+              <Button onClick={() => handleSearch(searchInput)} disabled={loading}>
                 {loading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
                 ) : (
                   <Search className="w-4 h-4" />
                 )}
               </Button>
-              {searchQuery && (
-                <Button variant="outline" onClick={() => handleSearch("")} disabled={loading}>
+              {(searchInput || searchQuery) && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchInput("")
+                    handleSearch("")
+                  }}
+                  disabled={loading}
+                >
                   Clear
                 </Button>
               )}
@@ -496,7 +511,10 @@ export default function SimIDXTeaser() {
                   key={suggestion}
                   variant="outline"
                   size="sm"
-                  onClick={() => handleSearch(suggestion)}
+                  onClick={() => {
+                    setSearchInput(suggestion)
+                    handleSearch(suggestion)
+                  }}
                   className="h-7 text-xs"
                 >
                   {suggestion}
@@ -535,7 +553,7 @@ export default function SimIDXTeaser() {
                 {/* Chain filter icons (only in real-time feed) */}
                 {!searchQuery && (
                 <div className="flex items-center gap-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1">
-                  <span className="text-xs font-semibold mr-1">Filter:</span>
+                  <span className="text-xs font-semibold mr-1">Filter Chains:</span>
                   {ALL_CHAIN_IDS.map((id) => {
                     const chain = chains[id]
                     if (!chain) return null
