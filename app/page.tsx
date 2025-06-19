@@ -11,10 +11,10 @@ import { NetworkIcon } from "@web3icons/react"
 
 // Updated data types to match real API
 interface Message {
-  chain_id: number
-  block_number: number
-  block_timestamp: number
-  txn_hash: string
+  chainId: number
+  blockNumber: number
+  blockTimestamp: number
+  txnHash: string
   sender: string
   receiver: string
   content: string
@@ -98,32 +98,61 @@ function Copyable({ text, children }: CopyableProps) {
 const fetchLatestMessages = async (limit = 10, offset = 0): Promise<ApiResponse> => {
   const res = await fetch(`/api/idx/latest?limit=${limit}&offset=${offset}`)
   console.log("fetchLatestMessages", res);
-  const data = (await res.json()) as ApiResponse | undefined
+  const rawData = (await res.json()) as any
 
-  if (!data || !Array.isArray(data.result)) {
+  if (!rawData || !Array.isArray(rawData.result)) {
     throw new Error("Unexpected /latest-messages response format")
   }
 
-  return data
+  // Normalize message fields to our Message interface
+  const normalizeMessage = (raw: any): Message => ({
+    chainId: Number(raw.chainId),
+    blockNumber: Number(raw.blockNumber),
+    blockTimestamp: Number(raw.blockTimestamp),
+    txnHash: raw.txnHash,
+    sender: raw.sender,
+    receiver: raw.receiver,
+    content: raw.content,
+    value: Number(raw.value),
+  })
+
+  return {
+    ...rawData,
+    result: rawData.result.map(normalizeMessage),
+  }
 }
 
 const fetchSearchMessages = async (content: string, limit = 10, offset = 0): Promise<ApiResponse> => {
   const encoded = encodeURIComponent(content)
   const res = await fetch(`/api/idx/search?content=${encoded}&limit=${limit}&offset=${offset}`)
   console.log("fetchSearchMessages", res);
-  const data = (await res.json()) as ApiResponse | undefined
+  const rawData = (await res.json()) as any
 
-  if (!data || !Array.isArray(data.result)) {
+  if (!rawData || !Array.isArray(rawData.result)) {
     throw new Error("Unexpected /search-messages response format")
   }
 
-  return data
+  const normalizeMessage = (raw: any): Message => ({
+    chainId: Number(raw.chainId),
+    blockNumber: Number(raw.blockNumber),
+    blockTimestamp: Number(raw.blockTimestamp),
+    txnHash: raw.txnHash,
+    sender: raw.sender,
+    receiver: raw.receiver,
+    content: raw.content,
+    value: Number(raw.value),
+  })
+
+  return {
+    ...rawData,
+    result: rawData.result.map(normalizeMessage),
+  }
 }
 
 function MessageCard({ message }: { message: Message }) {
   const [showFull, setShowFull] = useState(false)
-  const chain = chains[message.chain_id] || {
-    name: `Chain ${message.chain_id}`,
+  const chain = chains[message.chainId] || {
+    name: `Chain ${message.chainId}`,
     slug: "ethereum",
   }
 
@@ -133,6 +162,7 @@ function MessageCard({ message }: { message: Message }) {
 
   const formatAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`
   const formatTime = (timestamp: number) => new Date(timestamp * 1000).toLocaleString()
+  const formatNumber = (num: number) => num.toLocaleString()
 
   return (
     <Card className="w-full hover:shadow-md transition-shadow">
@@ -148,7 +178,7 @@ function MessageCard({ message }: { message: Message }) {
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
-            {formatTime(message.block_timestamp)}
+            {formatTime(message.blockTimestamp)}
           </div>
         </div>
       </CardHeader>
@@ -170,12 +200,12 @@ function MessageCard({ message }: { message: Message }) {
           <div className="flex items-center gap-2">
             <Hash className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">Block:</span>
-            <code className="bg-muted px-1 rounded text-xs">#{message.block_number.toLocaleString()}</code>
+            <code className="bg-muted px-1 rounded text-xs">#{formatNumber(message.blockNumber)}</code>
           </div>
           <div className="flex items-center gap-2">
             <ExternalLink className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">Tx:</span>
-            <Copyable text={message.txn_hash}>{formatAddress(message.txn_hash)}</Copyable>
+            <Copyable text={message.txnHash}>{formatAddress(message.txnHash)}</Copyable>
           </div>
         </div>
 
@@ -247,8 +277,8 @@ export default function SimIDXTeaser() {
         const data = await fetchLatestMessages(1, 0)
         if (messages.length === 0) return
 
-        const latestKnownHash = messages[0].txn_hash
-        const index = data.result.findIndex((m) => m.txn_hash === latestKnownHash)
+        const latestKnownHash = messages[0].txnHash
+        const index = data.result.findIndex((m) => m.txnHash === latestKnownHash)
         const diff = index === -1 ? data.result.length : index
 
         if (diff > 0) {
@@ -268,7 +298,7 @@ export default function SimIDXTeaser() {
     try {
       setLoading(true)
       const data = await fetchLatestMessages(newMessageCount || pagination.limit, 0)
-      const unique = data.result.filter((m) => !messages.find((msg) => msg.txn_hash === m.txn_hash))
+      const unique = data.result.filter((m) => !messages.find((msg) => msg.txnHash === m.txnHash))
       setMessages((prev) => [...unique, ...prev])
       setHasNewMessages(false)
       setNewMessageCount(0)
@@ -422,7 +452,7 @@ export default function SimIDXTeaser() {
                     ) : (
                       <RefreshCw className="w-4 h-4 mr-2" />
                     )}
-                    {newMessageCount} New Messages
+                    Show New Messages
                   </Button>
                 )}
               </div>
@@ -445,8 +475,8 @@ export default function SimIDXTeaser() {
               </div>
             ) : (
               <>
-                {filteredMessages.map((message) => (
-                  <MessageCard key={message.txn_hash} message={message} />
+                {filteredMessages.map((message, idx) => (
+                  <MessageCard key={`${message.txnHash}-${idx}`} message={message} />
                 ))}
 
                 <div className="flex justify-center pt-4">

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-const API_BASE_URL = process.env.IDX_API_BASE ?? "https://book.idx.dune.com"
+const API_BASE_URL = process.env.IDX_API_BASE ?? "https://82a2d64a59-0ee30bf4-9.idx.dune.com"
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
