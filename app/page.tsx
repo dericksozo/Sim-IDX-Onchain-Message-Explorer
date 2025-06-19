@@ -33,6 +33,18 @@ interface ApiResponse {
   }
 }
 
+// Shape of raw message objects returned by the external API (values may be stringified)
+interface RawMessageData {
+  chainId: string | number
+  blockNumber: string | number
+  blockTimestamp: string | number
+  txnHash: string
+  sender: string
+  receiver: string
+  content: string
+  value: string | number
+}
+
 // Supported networks (extend/adjust IDs as needed)
 const chains: Record<number, { name: string; slug: string }> = {
   1: { name: "Ethereum", slug: "ethereum" },
@@ -97,15 +109,19 @@ function Copyable({ text, children }: CopyableProps) {
 
 const fetchLatestMessages = async (limit = 10, offset = 0): Promise<ApiResponse> => {
   const res = await fetch(`/api/idx/latest?limit=${limit}&offset=${offset}`)
-  console.log("fetchLatestMessages", res);
-  const rawData = (await res.json()) as any
+  console.log("fetchLatestMessages", res)
+  const rawData = (await res.json()) as {
+    result: RawMessageData[]
+    pagination: ApiResponse["pagination"]
+    search?: ApiResponse["search"]
+  }
 
   if (!rawData || !Array.isArray(rawData.result)) {
     throw new Error("Unexpected /latest-messages response format")
   }
 
   // Normalize message fields to our Message interface
-  const normalizeMessage = (raw: any): Message => ({
+  const normalizeMessage = (raw: RawMessageData): Message => ({
     chainId: Number(raw.chainId),
     blockNumber: Number(raw.blockNumber),
     blockTimestamp: Number(raw.blockTimestamp),
@@ -125,14 +141,18 @@ const fetchLatestMessages = async (limit = 10, offset = 0): Promise<ApiResponse>
 const fetchSearchMessages = async (content: string, limit = 10, offset = 0): Promise<ApiResponse> => {
   const encoded = encodeURIComponent(content)
   const res = await fetch(`/api/idx/search?content=${encoded}&limit=${limit}&offset=${offset}`)
-  console.log("fetchSearchMessages", res);
-  const rawData = (await res.json()) as any
+  console.log("fetchSearchMessages", res)
+  const rawData = (await res.json()) as {
+    result: RawMessageData[]
+    pagination: ApiResponse["pagination"]
+    search?: ApiResponse["search"]
+  }
 
   if (!rawData || !Array.isArray(rawData.result)) {
     throw new Error("Unexpected /search-messages response format")
   }
 
-  const normalizeMessage = (raw: any): Message => ({
+  const normalizeMessage = (raw: RawMessageData): Message => ({
     chainId: Number(raw.chainId),
     blockNumber: Number(raw.blockNumber),
     blockTimestamp: Number(raw.blockTimestamp),
