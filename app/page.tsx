@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Search, RefreshCw, ChevronDown, ExternalLink, Clock, Hash, Users, MessageSquare, Check } from "lucide-react"
+import { Search, Zap, RefreshCw, ChevronDown, ExternalLink, Clock, Hash, Users, MessageSquare, Check } from "lucide-react"
 import { NetworkIcon } from "@web3icons/react"
 
 // Updated data types to match real API
@@ -48,19 +48,15 @@ interface RawMessageData {
 // Supported networks (extend/adjust IDs as needed)
 const chains: Record<number, { name: string; slug: string }> = {
   1: { name: "Ethereum", slug: "ethereum" },
-  11155111: { name: "Ethereum Sepolia", slug: "ethereum" },
-  8453: { name: "Base", slug: "base" },
-  84532: { name: "Base Sepolia", slug: "base" },
-  34443: { name: "Mode", slug: "mode" },
-  34444: { name: "Worldchain", slug: "worldcoin" },
-  57073: { name: "Ink", slug: "ink" },
-  130: { name: "Unichain", slug: "unichain" },
-  7777777: { name: "Zora", slug: "zora" },
-  60808: { name: "BOB", slug: "bob" },
   1868: { name: "Soneium", slug: "soneium" },
   360: { name: "Shape", slug: "shape" },
-  42161: { name: "Arbitrum One", slug: "arbitrum" },
-  137: { name: "Polygon", slug: "polygon" },
+  130: { name: "Unichain", slug: "unichain" },
+  57073: { name: "Ink", slug: "ink" },
+  480: { name: "Scroll", slug: "scroll" }, // placeholder slug; update if different
+  60808: { name: "BOB", slug: "bob" },
+  34443: { name: "Mode", slug: "mode" },
+  7777777: { name: "Zora", slug: "zora" },
+  8453: { name: "Base", slug: "base" },
 } as const
 
 // Helper function to handle content display
@@ -107,16 +103,25 @@ function Copyable({ text, children }: CopyableProps) {
 // Real API helpers -----------------------------------------------------------
 // ---------------------------------------------------------------------------
 
-const fetchLatestMessages = async (limit = 10, offset = 0): Promise<ApiResponse> => {
-  const res = await fetch(`/api/idx/latest?limit=${limit}&offset=${offset}`)
-  console.log("fetchLatestMessages", res)
-  const rawData = (await res.json()) as {
-    result: RawMessageData[]
-    pagination: ApiResponse["pagination"]
-    search?: ApiResponse["search"]
-  }
+const fetchLatestMessages = async (
+  limit = 10,
+  offset = 0,
+  chainIds?: number[],
+): Promise<ApiResponse> => {
+  const qs = `limit=${limit}&offset=${offset}${
+    chainIds && chainIds.length > 0 ? `&chainIds=${chainIds.join(",")}` : ""
+  }`
 
-  if (!rawData || !Array.isArray(rawData.result)) {
+  const res = await fetch(`/api/idx/latest?${qs}`)
+  console.log("fetchLatestMessages", res)
+  const rawData = await res.json()
+
+  // Determine where the messages array lives
+  const messages: RawMessageData[] | undefined =
+    rawData.result ?? rawData.messages ?? rawData.data ?? (Array.isArray(rawData) ? rawData : undefined)
+
+  if (!Array.isArray(messages)) {
+    console.error("Unexpected /latest-messages response", rawData)
     throw new Error("Unexpected /latest-messages response format")
   }
 
@@ -133,8 +138,9 @@ const fetchLatestMessages = async (limit = 10, offset = 0): Promise<ApiResponse>
   })
 
   return {
-    ...rawData,
-    result: rawData.result.map(normalizeMessage),
+    result: messages.map(normalizeMessage),
+    pagination: rawData.pagination ?? { limit, offset, count: messages.length },
+    search: rawData.search,
   }
 }
 
@@ -142,13 +148,13 @@ const fetchSearchMessages = async (content: string, limit = 10, offset = 0): Pro
   const encoded = encodeURIComponent(content)
   const res = await fetch(`/api/idx/search?content=${encoded}&limit=${limit}&offset=${offset}`)
   console.log("fetchSearchMessages", res)
-  const rawData = (await res.json()) as {
-    result: RawMessageData[]
-    pagination: ApiResponse["pagination"]
-    search?: ApiResponse["search"]
-  }
+  const rawData = await res.json()
 
-  if (!rawData || !Array.isArray(rawData.result)) {
+  const messages: RawMessageData[] | undefined =
+    rawData.result ?? rawData.messages ?? rawData.data ?? (Array.isArray(rawData) ? rawData : undefined)
+
+  if (!Array.isArray(messages)) {
+    console.error("Unexpected /search-messages response", rawData)
     throw new Error("Unexpected /search-messages response format")
   }
 
@@ -164,9 +170,23 @@ const fetchSearchMessages = async (content: string, limit = 10, offset = 0): Pro
   })
 
   return {
-    ...rawData,
-    result: rawData.result.map(normalizeMessage),
+    result: messages.map(normalizeMessage),
+    pagination: rawData.pagination ?? { limit, offset, count: messages.length },
+    search: rawData.search ?? { query: content },
   }
+}
+
+// ---------------------------------------------------------------------------
+// Chain icon helper ----------------------------------------------------------
+// ---------------------------------------------------------------------------
+
+function ChainIcon({ slug, size }: { slug: string; size: number }) {
+  // Fallback: render a simple black circle when icon not available
+  if (slug === "shape") {
+    return <div style={{ width: size, height: size }} className="rounded-full bg-black" />
+  }
+
+  return <NetworkIcon id={slug} size={size} variant="branded" />
 }
 
 function MessageCard({ message }: { message: Message }) {
@@ -190,7 +210,7 @@ function MessageCard({ message }: { message: Message }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 flex items-center justify-center">
-              <NetworkIcon id={chain.slug} size={24} variant="branded" />
+              <ChainIcon slug={chain.slug} size={24} />
             </div>
             <Badge variant="secondary" className="text-xs">
               {chain.name}
@@ -266,6 +286,17 @@ export default function SimIDXTeaser() {
   const [newMessageCount, setNewMessageCount] = useState(0)
   const [pagination, setPagination] = useState({ limit: 10, offset: 0, count: 0 })
 
+  // Chain filtering --------------------------------------------------------
+  const ALL_CHAIN_IDS = Object.keys(chains).map(Number)
+  const DEFAULT_SELECTED_CHAINS = ALL_CHAIN_IDS.filter((id) => id !== 130) // Exclude UniChain by default
+  const [selectedChains, setSelectedChains] = useState<number[]>(DEFAULT_SELECTED_CHAINS)
+
+  const toggleChain = (id: number) => {
+    setSelectedChains((prev) =>
+      prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id],
+    )
+  }
+
   // Updated search suggestions based on real data patterns
   const searchSuggestions = ["zachXBT", "erc-20", "mint", "facet", "opensea", "gov", "data:", "author"]
 
@@ -274,7 +305,7 @@ export default function SimIDXTeaser() {
     const loadInitial = async () => {
       try {
         setLoading(true)
-        const data = await fetchLatestMessages(pagination.limit, 0)
+        const data = await fetchLatestMessages(pagination.limit, 0, selectedChains)
         setMessages(data.result)
         setPagination(data.pagination)
       } catch (err) {
@@ -285,8 +316,27 @@ export default function SimIDXTeaser() {
     }
 
     loadInitial()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []) // eslint-disable-next-line react-hooks/exhaustive-deps
+
+  // Reload messages when selectedChains change (and not searching)
+  useEffect(() => {
+    if (searchQuery) return
+
+    const reload = async () => {
+      try {
+        setLoading(true)
+        const data = await fetchLatestMessages(pagination.limit, 0, selectedChains)
+        setMessages(data.result)
+        setPagination(data.pagination)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    reload()
+  }, [selectedChains])
 
   // Poll for new messages ----------------------------------------------------
   useEffect(() => {
@@ -294,7 +344,7 @@ export default function SimIDXTeaser() {
 
     const interval = setInterval(async () => {
       try {
-        const data = await fetchLatestMessages(1, 0)
+        const data = await fetchLatestMessages(1, 0, selectedChains)
         if (messages.length === 0) return
 
         const latestKnownHash = messages[0].txnHash
@@ -311,13 +361,13 @@ export default function SimIDXTeaser() {
     }, 10000)
 
     return () => clearInterval(interval)
-  }, [messages, searchQuery])
+  }, [messages, searchQuery, selectedChains])
 
   const handleRefresh = async () => {
     if (!hasNewMessages) return
     try {
       setLoading(true)
-      const data = await fetchLatestMessages(newMessageCount || pagination.limit, 0)
+      const data = await fetchLatestMessages(newMessageCount || pagination.limit, 0, selectedChains)
       const unique = data.result.filter((m) => !messages.find((msg) => msg.txnHash === m.txnHash))
       setMessages((prev) => [...unique, ...prev])
       setHasNewMessages(false)
@@ -335,7 +385,7 @@ export default function SimIDXTeaser() {
       const newOffset = pagination.offset + pagination.limit
       const data = searchQuery
         ? await fetchSearchMessages(searchQuery, pagination.limit, newOffset)
-        : await fetchLatestMessages(pagination.limit, newOffset)
+        : await fetchLatestMessages(pagination.limit, newOffset, selectedChains)
       setMessages((prev) => [...prev, ...data.result])
       setPagination({ ...pagination, offset: newOffset })
     } catch (err) {
@@ -353,7 +403,7 @@ export default function SimIDXTeaser() {
       // Reset to latest messages
       try {
         setLoading(true)
-        const data = await fetchLatestMessages(pagination.limit, 0)
+        const data = await fetchLatestMessages(pagination.limit, 0, selectedChains)
         setMessages(data.result)
       } catch (err) {
         console.error(err)
@@ -461,11 +511,17 @@ export default function SimIDXTeaser() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Search className="w-5 h-5" />
+                {searchQuery ? (
+                  <Search className="w-5 h-5" />
+                ) : (
+                  <Zap className="w-5 h-5" />
+                )}
                 {searchQuery ? `Search Results for "${searchQuery}"` : "Real-time Message Feed"}
               </CardTitle>
-              <div className="flex items-center gap-2">
-                {hasNewMessages && (
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Show New Messages button (only in real-time feed) */}
+                {!searchQuery && hasNewMessages && (
                   <Button onClick={handleRefresh} disabled={loading} size="sm">
                     {loading ? (
                       <RefreshCw className="w-4 h-4 animate-spin mr-2" />
@@ -474,6 +530,37 @@ export default function SimIDXTeaser() {
                     )}
                     Show New Messages
                   </Button>
+                )}
+
+                {/* Chain filter icons (only in real-time feed) */}
+                {!searchQuery && (
+                <div className="flex items-center gap-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1">
+                  <span className="text-xs font-semibold mr-1">Filter:</span>
+                  {ALL_CHAIN_IDS.map((id) => {
+                    const chain = chains[id]
+                    if (!chain) return null
+                    const selected = selectedChains.includes(id)
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => toggleChain(id)}
+                        title={`${selected ? "Hide" : "Show"} ${chain.name}`}
+                        className={`relative p-1 rounded transition-colors ${
+                          selected ? "opacity-100" : "opacity-30 grayscale"
+                        } hover:bg-muted/40`}
+                      >
+                        <div className="relative w-5 h-5 flex items-center justify-center">
+                          <ChainIcon slug={chain.slug} size={20} />
+                          {!selected && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-full h-[2px] bg-red-500/80 rotate-45" />
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
                 )}
               </div>
             </div>
