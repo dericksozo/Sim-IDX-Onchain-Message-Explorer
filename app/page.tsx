@@ -210,7 +210,6 @@ function MessageCard({ message }: { message: Message }) {
   const truncatedContent = formattedContent.length > 150 ? formattedContent.substring(0, 150) + "..." : formattedContent
   const shouldTruncate = formattedContent.length > 150
 
-  const formatAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`
   const formatTime = (timestamp: number) => new Date(timestamp * 1000).toLocaleString()
   const formatNumber = (num: number) => num.toLocaleString()
 
@@ -341,7 +340,7 @@ export default function SimIDXTeaser() {
     }
 
     loadInitial()
-  }, []) // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Reload messages when selectedChains change (and not searching)
   useEffect(() => {
