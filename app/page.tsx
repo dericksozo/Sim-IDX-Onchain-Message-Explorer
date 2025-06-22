@@ -473,6 +473,7 @@ export default function SimIDXTeaser() {
                 href="https://sim.dune.com/"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="hidden"
               >
                 <Button size="sm">Explore Sim IDX</Button>
               </a>
