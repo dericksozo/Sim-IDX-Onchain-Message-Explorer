@@ -52,7 +52,7 @@ const chains: Record<number, { name: string; slug: string }> = {
   360: { name: "Shape", slug: "shape" },
   130: { name: "Unichain", slug: "unichain" },
   57073: { name: "Ink", slug: "ink" },
-  480: { name: "Scroll", slug: "scroll" }, // placeholder slug; update if different
+  480: { name: "World Chain", slug: "world" },
   60808: { name: "BOB", slug: "bob" },
   34443: { name: "Mode", slug: "mode" },
   7777777: { name: "Zora", slug: "zora" },
