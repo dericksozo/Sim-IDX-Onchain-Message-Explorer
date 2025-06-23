@@ -465,7 +465,7 @@ export default function SimIDXTeaser() {
             <div className="flex items-center gap-3">
               <div>
                 <h1 className="text-xl font-bold">Onchain Message Explorer</h1>
-                <p className="text-xs text-muted-foreground">Real-time Multi-chain Indexing with SimIDX</p>
+                <p className="text-xs text-muted-foreground">Realtime Multichain Indexing with Sim IDX</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
